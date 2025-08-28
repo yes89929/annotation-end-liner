@@ -1,0 +1,82 @@
+{
+  "name": "annotation-end-liner",
+  "displayName": "Annotation End Liner",
+  "description": "VSCode extension to format comments by extending markers to a configurable column",
+  "version": "1.0.0",
+  "publisher": "yes89929",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": [
+    "Formatters"
+  ],
+  "activationEvents": [
+    "onCommand:annotationEndLiner.format",
+    "onLanguage:plaintext",
+    "onLanguage:markdown",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:java",
+    "onLanguage:c",
+    "onLanguage:cpp"
+  ],
+  "main": "out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "annotationEndLiner.format",
+        "title": "Annotation End Liner: Format Comments"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Annotation End Liner",
+      "properties": {
+        "annotationEndLiner.charWidths": {
+          "type": "object",
+          "default": { "default": 1, "korean": 1.645 },
+          "description": "Character width settings per language",
+          "properties": {
+            "default": { "type": "number" },
+            "korean": { "type": "number" }
+          }
+        },
+        "annotationEndLiner.markerLengths": {
+          "type": "object",
+          "default": { "-": 80, "=": 100, "#": 120 },
+          "description": "Target column lengths per marker character",
+          "properties": {
+            "-": { "type": "number" },
+            "=": { "type": "number" },
+            "#": { "type": "number" }
+          }
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "annotationEndLiner.format",
+        "key": "ctrl+alt+f",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "dependencies": {
+    "string-width": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.0.0",
+    "@types/vscode": "^1.50.0",
+    "@types/node": "^12.11.7",
+    "@vscode/test-electron": "^2.0.0",
+    "vsce": "^1.91.0"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "npm run compile && node ./node_modules/@vscode/test-electron/out/test/runTest.js"
+  }
+}

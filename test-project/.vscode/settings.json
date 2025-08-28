@@ -1,0 +1,24 @@
+{
+  "annotationEndLiner.markerLengths": {
+    "-": 80,
+    "=": 100,
+    "#": 120
+  },
+  "editor.formatOnSave": true,
+  // Use Annotation End Liner as default formatter for supported languages
+  "[plaintext]": {
+    "editor.defaultFormatter": "your-publisher.annotation-end-liner"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "your-publisher.annotation-end-liner"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "your-publisher.annotation-end-liner"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "your-publisher.annotation-end-liner"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "your-publisher.annotation-end-liner"
+  }
+}
