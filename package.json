@@ -36,21 +36,32 @@
         "annotationEndLiner.charWidths": {
           "type": "object",
           "default": { "default": 1, "korean": 1.645 },
-          "description": "Character width settings per language",
+          "description": "Character width settings per language. Configure how many columns each character type occupies (e.g., 'default': 1 for ASCII, 'korean': 1.645 for Korean characters)",
           "properties": {
             "default": { "type": "number" },
             "korean": { "type": "number" }
-          }
+          },
+          "scope": "language-overridable"
         },
         "annotationEndLiner.markerLengths": {
           "type": "object",
           "default": { "-": 80, "=": 100, "#": 120 },
-          "description": "Target column lengths per marker character",
+          "description": "Target column lengths for each marker character. Specifies how far to extend comment lines ending with '---', '===', or '###'",
           "properties": {
             "-": { "type": "number" },
             "=": { "type": "number" },
             "#": { "type": "number" }
-          }
+          },
+          "scope": "language-overridable"
+        },
+        "annotationEndLiner.preFormatters": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "description": "List of formatter extension IDs to run before annotation formatting (e.g., 'esbenp.prettier-vscode', 'dbaeumer.vscode-eslint'). Formatters are executed in the order specified",
+          "scope": "language-overridable"
         }
       }
     },

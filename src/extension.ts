@@ -15,7 +15,8 @@ export function activate(context: vscode.ExtensionContext) {
     const languages = ['plaintext', 'markdown', 'javascript', 'typescript', 'python', 'java', 'c', 'cpp'];
     languages.forEach(lang => {
         const provider = vscode.languages.registerDocumentFormattingEditProvider({ language: lang, scheme: 'file' }, {
-            provideDocumentFormattingEdits(document: vscode.TextDocument): vscode.TextEdit[] {
+            async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
+                await runPreFormatters(document);
                 return provideEdits(document);
             }
         });
@@ -24,6 +25,37 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+async function runPreFormatters(document: vscode.TextDocument): Promise<void> {
+    const config = vscode.workspace.getConfiguration('annotationEndLiner', document.uri);
+    const preFormatters = config.get<string[]>('preFormatters', []);
+    
+    if (!preFormatters || preFormatters.length === 0) {
+        return;
+    }
+
+    // Get the current editor configuration
+    const editorConfig = vscode.workspace.getConfiguration('editor', document.uri);
+    const originalFormatter = editorConfig.get<string>('defaultFormatter');
+
+    try {
+        // Run each pre-formatter in sequence
+        for (const formatterId of preFormatters) {
+            // Temporarily set the defaultFormatter to the pre-formatter
+            await editorConfig.update('defaultFormatter', formatterId, vscode.ConfigurationTarget.Global);
+            
+            // Execute the format document command
+            await vscode.commands.executeCommand('editor.action.formatDocument');
+        }
+    } finally {
+        // Restore the original defaultFormatter
+        if (originalFormatter !== undefined) {
+            await editorConfig.update('defaultFormatter', originalFormatter, vscode.ConfigurationTarget.Global);
+        } else {
+            await editorConfig.update('defaultFormatter', undefined, vscode.ConfigurationTarget.Global);
+        }
+    }
+}
 
 function provideEdits(document: vscode.TextDocument): vscode.TextEdit[] {
     const config = vscode.workspace.getConfiguration('annotationEndLiner');
