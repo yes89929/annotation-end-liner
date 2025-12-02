@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 
 export function activate(context: vscode.ExtensionContext) {
-    const formatCommand = vscode.commands.registerCommand('annotationEndLiner.format', () => {
+    const formatCommand = vscode.commands.registerCommand('annotationEndLiner.format', async () => {
         const editor = vscode.window.activeTextEditor;
         if (editor) {
-            const edits = provideEdits(editor.document);
+            const updatedDocument = await runPreFormatters(editor.document);
+            const edits = provideEdits(updatedDocument);
             const workspaceEdit = new vscode.WorkspaceEdit();
-            edits.forEach(edit => workspaceEdit.replace(editor.document.uri, edit.range, edit.newText));
-            vscode.workspace.applyEdit(workspaceEdit);
+            edits.forEach(edit => workspaceEdit.replace(updatedDocument.uri, edit.range, edit.newText));
+            await vscode.workspace.applyEdit(workspaceEdit);
         }
     });
     context.subscriptions.push(formatCommand);
@@ -16,8 +17,8 @@ export function activate(context: vscode.ExtensionContext) {
     languages.forEach(lang => {
         const provider = vscode.languages.registerDocumentFormattingEditProvider({ language: lang, scheme: 'file' }, {
             async provideDocumentFormattingEdits(document: vscode.TextDocument): Promise<vscode.TextEdit[]> {
-                await runPreFormatters(document);
-                return provideEdits(document);
+                const updatedDocument = await runPreFormatters(document);
+                return provideEdits(updatedDocument);
             }
         });
         context.subscriptions.push(provider);
@@ -26,12 +27,12 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
-async function runPreFormatters(document: vscode.TextDocument): Promise<void> {
+async function runPreFormatters(document: vscode.TextDocument): Promise<vscode.TextDocument> {
     const config = vscode.workspace.getConfiguration('annotationEndLiner', document.uri);
     const preFormatters = config.get<string[]>('preFormatters', []);
     
     if (!preFormatters || preFormatters.length === 0) {
-        return;
+        return document;
     }
 
     // Get the current editor configuration
@@ -41,11 +42,17 @@ async function runPreFormatters(document: vscode.TextDocument): Promise<void> {
     try {
         // Run each pre-formatter in sequence
         for (const formatterId of preFormatters) {
-            // Temporarily set the defaultFormatter to the pre-formatter
-            await editorConfig.update('defaultFormatter', formatterId, vscode.ConfigurationTarget.Global);
-            
-            // Execute the format document command
-            await vscode.commands.executeCommand('editor.action.formatDocument');
+            try {
+                // Temporarily set the defaultFormatter to the pre-formatter
+                await editorConfig.update('defaultFormatter', formatterId, vscode.ConfigurationTarget.Global);
+                
+                // Execute the format document command
+                // This will apply the formatting immediately
+                await vscode.commands.executeCommand('editor.action.formatDocument');
+            } catch (error) {
+                // If a pre-formatter fails, log and continue with the next one
+                console.error(`Pre-formatter ${formatterId} failed:`, error);
+            }
         }
     } finally {
         // Restore the original defaultFormatter
@@ -55,6 +62,14 @@ async function runPreFormatters(document: vscode.TextDocument): Promise<void> {
             await editorConfig.update('defaultFormatter', undefined, vscode.ConfigurationTarget.Global);
         }
     }
+
+    // Return the updated document
+    // After formatting, we need to get the current version of the document
+    const editor = vscode.window.activeTextEditor;
+    if (editor && editor.document.uri.toString() === document.uri.toString()) {
+        return editor.document;
+    }
+    return document;
 }
 
 function provideEdits(document: vscode.TextDocument): vscode.TextEdit[] {
