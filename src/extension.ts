@@ -44,11 +44,25 @@ async function runPreFormatters(document: vscode.TextDocument): Promise<vscode.T
         for (const formatterId of preFormatters) {
             try {
                 // Temporarily set the defaultFormatter to the pre-formatter
+                // Note: Using Global scope is necessary to temporarily override the formatter
                 await editorConfig.update('defaultFormatter', formatterId, vscode.ConfigurationTarget.Global);
                 
-                // Execute the format document command
-                // This will apply the formatting immediately
-                await vscode.commands.executeCommand('editor.action.formatDocument');
+                // Execute format for the specific document
+                // Using vscode.executeFormatDocumentProvider to format the specific document
+                const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+                    'vscode.executeFormatDocumentProvider',
+                    document.uri,
+                    { tabSize: 4, insertSpaces: true }
+                );
+                
+                // Apply the edits if any were returned
+                if (edits && edits.length > 0) {
+                    const workspaceEdit = new vscode.WorkspaceEdit();
+                    edits.forEach(edit => {
+                        workspaceEdit.replace(document.uri, edit.range, edit.newText);
+                    });
+                    await vscode.workspace.applyEdit(workspaceEdit);
+                }
             } catch (error) {
                 // If a pre-formatter fails, log and continue with the next one
                 console.error(`Pre-formatter ${formatterId} failed:`, error);
@@ -63,21 +77,23 @@ async function runPreFormatters(document: vscode.TextDocument): Promise<vscode.T
         }
     }
 
-    // Return the updated document
-    // After formatting, we need to get the current version of the document
-    const editor = vscode.window.activeTextEditor;
-    if (editor && editor.document.uri.toString() === document.uri.toString()) {
-        return editor.document;
+    // Return the updated document by reopening it from workspace
+    // This ensures we have the latest version after all pre-formatters have run
+    try {
+        const updatedDocument = await vscode.workspace.openTextDocument(document.uri);
+        return updatedDocument;
+    } catch (error) {
+        console.error('Failed to reload document after pre-formatting:', error);
+        return document;
     }
-    return document;
 }
 
 function provideEdits(document: vscode.TextDocument): vscode.TextEdit[] {
     const config = vscode.workspace.getConfiguration('annotationEndLiner');
-    // package.json의 default 값을 사용
+    // Get marker lengths from configuration (defaults from package.json)
     const markerLengths = config.get<{ [key: string]: number }>('markerLengths')!;
-    // 한글 너비 비율은 package.json default에서 가져옵니다
-    const charWidths = config.get<{ default: number; korean: number }>('charWidths')!;
+    // Get character widths from configuration (defaults from package.json)
+    const charWidths = config.get<{ default: number; korean: number }>('charWidths')!
     const edits: vscode.TextEdit[] = [];
     for (let i = 0; i < document.lineCount; i++) {
         const line = document.lineAt(i);
